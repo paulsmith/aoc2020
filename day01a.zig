@@ -5,11 +5,13 @@ const expect = @import("std").testing.expect;
 const max_stdin_size = 1 * 1024 * 1024;
 
 pub fn main() !void {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = &arena.allocator;
-    const stdin = std.io.getStdIn().reader();
-    const input = try stdin.readAllAlloc(allocator, max_stdin_size);
+    //var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    //defer arena.deinit();
+    //const allocator = &arena.allocator;
+    var allocator_instance = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = &allocator_instance.allocator;
+    const stdin = std.io.getStdIn();
+    const input = try stdin.readToEndAlloc(allocator, max_stdin_size);
     const result = try find(allocator, input);
     std.debug.print("{}\n", .{result});
 }
