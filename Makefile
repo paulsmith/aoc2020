@@ -5,3 +5,7 @@ day01:
 day02:
 	zig run day02a.zig < day02.input
 	zig run day02b.zig < day02.input
+
+day02:
+	zig run day03a.zig < day03.input
+	zig run day03b.zig < day03.input
