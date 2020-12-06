@@ -89,8 +89,8 @@ fn validHex(val: []const u8) bool {
     if (val[0] != '#') return false;
     if (val[1..].len != 6) return false;
     var idx: usize = 1;
-    while (idx <= 6) : (idx += 1) {
-        if (!isHexChar(val[idx])) return false;
+    for (val[1..]) |ch| {
+        if (!isHexChar(ch)) return false;
     }
     return true;
 }
