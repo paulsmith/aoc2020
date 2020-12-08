@@ -7,8 +7,6 @@ const process = std.process;
 const ArrayList = std.ArrayList;
 const Allocator = mem.Allocator;
 
-pub const VecString = ArrayList([]const u8);
-
 pub fn getLines(allocator: *Allocator) ![][]const u8 {
     const args = try process.argsAlloc(allocator);
     defer process.argsFree(allocator, args);
@@ -19,12 +17,17 @@ pub fn getLines(allocator: *Allocator) ![][]const u8 {
         // open file and read it
         break :blk try fs.cwd().readFileAlloc(allocator, args[1], math.maxInt(u32));
     };
-    var lines = VecString.init(allocator);
-    var iter = mem.split(input, "\n");
+    const lines = try strToLines(allocator, input);
+    return lines.items;
+}
+
+pub fn strToLines(allocator: *Allocator, str: []const u8) !ArrayList([]const u8) {
+    var lines = ArrayList([]const u8).init(allocator);
+    var iter = mem.split(str, "\n");
     while (iter.next()) |line| {
         if (line.len > 0) {
             try lines.append(line);
         }
     }
-    return lines.items;
+    return lines;
 }

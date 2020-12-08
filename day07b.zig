@@ -43,6 +43,15 @@ const Bags = struct {
         self.allocator.destroy(self);
     }
 
+    fn getOrCreateBag(self: *Self, color: []const u8) !*Bag {
+        var bag = self.map.get(color) orelse blk: {
+            var b = Bag.new(self.allocator, color);
+            try self.map.put(color, b);
+            break :blk b;
+        };
+        return bag;
+    }
+
     fn countColors(self: *Self, color: []const u8) i32 {
         const bag = self.map.get(color) orelse {
             panic("invalid graph, expected {}\n", .{color});
@@ -50,7 +59,7 @@ const Bags = struct {
         var seen = std.StringHashMap(bool).init(self.allocator);
         defer seen.deinit();
         self.countContained(bag, &seen);
-        return @as(i32, seen.count());
+        return @intCast(i32, seen.count());
     }
 
     fn countContained(self: *Self, bag: *Bag, seen: *std.StringHashMap(bool)) void {
@@ -114,11 +123,7 @@ fn parseRules(allocator: *mem.Allocator, lines: [][]const u8) !*Bags {
         const s = "bags contain";
         const idx = mem.indexOf(u8, line, s).?;
         const color = line[0 .. idx - 1];
-        var bag = bags.map.get(color) orelse blk: {
-            var b = Bag.new(allocator, color);
-            try bags.map.put(color, b);
-            break :blk b;
-        };
+        var bag = try bags.getOrCreateBag(color);
         const rest = line[idx + s.len + 1 ..];
         var it = mem.split(rest, ", ");
         while (it.next()) |clause| {
@@ -128,11 +133,7 @@ fn parseRules(allocator: *mem.Allocator, lines: [][]const u8) !*Bags {
                 const n = clause[0] - '0';
                 const bag_idx = mem.indexOf(u8, clause, " bag").?;
                 const _color = clause[2..bag_idx];
-                var _bag = bags.map.get(_color) orelse blk: {
-                    var b = Bag.new(allocator, _color);
-                    try bags.map.put(_color, b);
-                    break :blk b;
-                };
+                var _bag = try bags.getOrCreateBag(_color);
                 try _bag.contained_by.append(bag);
                 try bag.contains.append(Edge{ .num_bags = n, .bag = _bag });
             } else unreachable;
