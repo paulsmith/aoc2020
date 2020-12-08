@@ -78,6 +78,11 @@ const Bag = struct {
 
     const Self = @This();
 
+    const Edge = struct {
+        num_bags: u8,
+        bag: *Bag,
+    };
+
     fn new(allocator: *mem.Allocator, color: []const u8) *Bag {
         var bag = allocator.create(Bag) catch unreachable;
         bag.allocator = allocator;
@@ -92,11 +97,10 @@ const Bag = struct {
         self.contained_by.deinit();
         self.allocator.destroy(self);
     }
-};
 
-const Edge = struct {
-    num_bags: u8,
-    bag: *Bag,
+    fn addContains(self: *Self, n: u8, bag: *Bag) !void {
+        try self.contains.append(Edge{ .num_bags = n, .bag = bag });
+    }
 };
 
 // build graph of bags
@@ -118,7 +122,7 @@ fn parseRules(allocator: *mem.Allocator, lines: [][]const u8) !*Bags {
                 const _color = clause[2..bag_idx];
                 var _bag = try bags.getOrCreateBag(_color);
                 try _bag.contained_by.append(bag);
-                try bag.contains.append(Edge{ .num_bags = n, .bag = _bag });
+                try bag.addContains(n, _bag);
             } else unreachable;
         }
     }
