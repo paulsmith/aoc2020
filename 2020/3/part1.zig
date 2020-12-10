@@ -1,5 +1,5 @@
 const std = @import("std");
-const lines = @import("./lines.zig");
+const lines = @import("../../lines.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};

@@ -3,6 +3,7 @@ const math = std.math;
 const mem = std.mem;
 const io = std.io;
 const fs = std.fs;
+const fmt = std.fmt;
 const process = std.process;
 const ArrayList = std.ArrayList;
 const Allocator = mem.Allocator;
@@ -30,4 +31,12 @@ pub fn strToLines(allocator: *Allocator, str: []const u8) !ArrayList([]const u8)
         }
     }
     return lines;
+}
+
+pub fn toNumbers(comptime T: type, allocator: *Allocator, lines: [][]const u8) ![]T {
+    var nums = try allocator.alloc(T, lines.len);
+    for (lines) |line, i| {
+        nums[i] = try fmt.parseInt(T, line, 10);
+    }
+    return nums;
 }

@@ -7,8 +7,8 @@ const ascii = std.ascii;
 const ArrayList = std.ArrayList;
 const panic = std.debug.panic;
 
-const getLines = @import("./lines.zig").getLines;
-const strToLines = @import("./lines.zig").strToLines;
+const getLines = @import("../../lines.zig").getLines;
+const strToLines = @import("../../lines.zig").strToLines;
 
 pub fn main() !void {
     var arena = heap.ArenaAllocator.init(heap.page_allocator);

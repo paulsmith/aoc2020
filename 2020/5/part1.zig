@@ -1,5 +1,5 @@
 const std = @import("std");
-const getLines = @import("./lines.zig").getLines;
+const getLines = @import("../../lines.zig").getLines;
 const print = std.debug.print;
 const assert = std.debug.assert;
 

@@ -3,12 +3,11 @@ const testing = std.testing;
 const mem = std.mem;
 const fmt = std.fmt;
 const heap = std.heap;
-const ArrayList = std.ArrayList;
-const AutoHashMap = std.AutoHashMap;
 const assert = std.debug.assert;
+const panic = std.debug.panic;
 const print = std.debug.print;
 
-const lines = @import("./lines.zig");
+const lines = @import("../../lines.zig");
 
 pub fn main() !void {
     var arena = heap.ArenaAllocator.init(heap.page_allocator);
@@ -17,19 +16,18 @@ pub fn main() !void {
     defer arena.allocator.free(instructions);
     var cpu = try CPU.new(testing.allocator, instructions);
     defer cpu.free();
-    while (cpu.loopNotHit()) {
-        cpu.step();
-    }
+    cpu.fixProgram();
     const result = cpu.accumulator;
     print("{}\n", .{result});
 }
 
 const CPU = struct {
     accumulator: i32,
-    pc: i32,
-    counter: AutoHashMap(i32, i32),
+    pc: usize,
+    counter: []i8,
     mem: []Inst,
     allocator: *mem.Allocator,
+    inst_ptr: usize,
 
     const Self = @This();
 
@@ -37,34 +35,76 @@ const CPU = struct {
         var cpu = try allocator.create(Self);
         cpu.accumulator = 0;
         cpu.pc = 0;
-        cpu.counter = AutoHashMap(i32, i32).init(allocator);
         cpu.mem = ram;
+        cpu.counter = try allocator.alloc(i8, ram.len);
         cpu.allocator = allocator;
         return cpu;
     }
 
     fn free(self: *Self) void {
-        self.counter.deinit();
+        self.allocator.free(self.counter);
         self.allocator.destroy(self);
     }
 
-    fn loopNotHit(self: *Self) bool {
-        const nhit = self.counter.get(self.pc) orelse 0;
-        if (nhit == 1) return false;
-        return true;
+    fn isLooping(self: *Self) bool {
+        assert(self.pc < self.mem.len);
+        if (self.counter[@intCast(usize, self.pc)] > 0) return true;
+        return false;
+    }
+
+    fn running(self: *Self) bool {
+        const stopped = (self.pc >= self.mem.len) or self.isLooping();
+        return !stopped;
     }
 
     fn step(self: *Self) void {
         assert(self.pc < self.mem.len);
-        const inst = self.mem[@intCast(usize, self.pc)];
+        const inst = self.mem[self.pc];
         var advance_pc: i32 = 1;
         switch (inst.op) {
             .acc => self.accumulator += inst.arg,
             .jmp => advance_pc = inst.arg,
             .nop => {},
         }
-        self.counter.put(self.pc, (self.counter.get(self.pc) orelse 0) + 1) catch unreachable;
-        self.pc += advance_pc;
+        const count = self.counter[self.pc];
+        self.counter[self.pc] = count + 1;
+        self.pc = @intCast(usize, (@intCast(i32, self.pc) + advance_pc));
+    }
+
+    fn run(self: *Self, instrument: bool) void {
+        while (self.running()) {
+            self.step();
+        }
+    }
+
+    fn reset(self: *Self) void {
+        self.pc = 0;
+        self.accumulator = 0;
+        for (self.counter) |*ptr| ptr.* = 0;
+    }
+
+    fn terminatedNormally(self: *Self) bool {
+        return self.pc == self.mem.len;
+    }
+
+    fn fixProgram(self: *Self) void {
+        var idx: usize = 0;
+        while (idx < self.mem.len - 1) {
+            while (self.mem[idx].op != .jmp and self.mem[idx].op != .nop) : (idx += 1) {}
+            if (idx == self.mem.len) break;
+            const old_op = self.mem[idx].op;
+            self.mem[idx].op = switch (old_op) {
+                .jmp => .nop,
+                .nop => .jmp,
+                else => unreachable,
+            };
+            self.reset();
+            self.run(false);
+            if (self.terminatedNormally()) break;
+            self.mem[idx].op = old_op;
+            idx += 1;
+        }
+        if (!self.terminatedNormally()) panic("no fixable instruction found", .{});
     }
 };
 
@@ -115,8 +155,6 @@ test "" {
     defer testing.allocator.free(instructions);
     var cpu = try CPU.new(testing.allocator, instructions);
     defer cpu.free();
-    while (cpu.loopNotHit()) {
-        cpu.step();
-    }
-    testing.expectEqual(cpu.accumulator, 5);
+    cpu.fixProgram();
+    testing.expectEqual(cpu.accumulator, 8);
 }
